@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "arcxp-interview"
+version = "0.1.0"
+description = ""
+authors = ["Camilo Martinez <camilo.martinez@wizeline.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pandas = "^2.2.2"
+ipykernel = "^6.29.5"
+matplotlib = "^3.9.1.post1"
+pyarrow = "^17.0.0"
+pydeequ = "^1.4.0"
+pyspark = "^3.5.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
