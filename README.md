@@ -99,4 +99,22 @@ git clone https://github.com/CamiloMWizeline/arcxp-interview.git
 
 ![GlueJob](images/Glue-Job.png)
 
+### Queries
+
+#### Average Trip distance by pick up borough
+
+![Query1](images/query1.png)
+
+#### Average Trip duration by dropoff borough
+
+![Query2](images/query2.png)
+
+#### Total number of trips by Borough and Year-Month
+
+![Query3](images/query3.png)
+
+#### Boroughs with highest revenue per trip and vehicle type
+
+![Query4](images/query4.png)
+
 
