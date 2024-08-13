@@ -44,11 +44,11 @@ def get_data_from_s3(input_path: str, reference_file_path: str):
 
     return df_trips, df_boroughs
 
-def filter_data_by_date(df_trips, partition_year: str, partition_month: str):
+def filter_data_by_date(df_trips, partition_year: str, partition_month: str, pickup: str, dropoff: str):
     df_trips_filtered = df_trips\
         .filter(
-            (year(col("lpep_pickup_datetime")) == int(partition_year)) & 
-            (month(col("lpep_pickup_datetime")) == int(partition_month)) &
+            (year(col(pickup)) == int(partition_year)) &
+            (month(col(dropoff)) == int(partition_month)) &
             (col("DOLocationID").isNotNull()) &
             (col("PULocationID").isNotNull())
         )
@@ -57,9 +57,12 @@ def filter_data_by_date(df_trips, partition_year: str, partition_month: str):
     return df_trips_filtered
 
 def get_pickup_dropoff(file_type: str):
-    if file_type in ("green-trip-data", 'yellow-trip-data'):
+    if file_type in ("green-trip-data"):
         _pickup = "lpep_pickup_datetime"
         _dropoff = "lpep_dropoff_datetime"
+    elif file_type in ("yellow-trip-data"):
+        _pickup = "tpep_pickup_datetime"
+        _dropoff = "tpep_dropoff_datetime"
     else:
         _pickup = "pickup_datetime"
         _dropoff = "dropoff_datetime"
@@ -200,13 +203,22 @@ def run_deequ_constrains_validations(
     else:
         logger.info("Data Validation Failed!")
 
+def trigger_crawler(crawler_name: str):
+    glue_client = boto3.client('glue')
+
+    try:
+        response = glue_client.start_crawler(Name=crawler_name)
+        logger.info(f"Crawler {crawler_name} started successfully.")
+    except Exception as e:
+        logger.info(f"Error starting crawler {crawler_name}: {str(e)}")
+
 def run_etl(
         spark, input_path: str, output_path: str, reference_file_path: str, dynamodb_validation_table: str,
-        s3_validation_output_path:str, partition_year: str, partition_month: str, file_type: str
+        s3_validation_output_path:str, partition_year: str, partition_month: str, file_type: str, crawler_name: str
     ):
-    df_trips, df_boroughs = get_data_from_s3(input_path, reference_file_path)
-    df_trips_filtered = filter_data_by_date(df_trips, partition_year, partition_month)
     pickup, dropoff = get_pickup_dropoff(file_type)
+    df_trips, df_boroughs = get_data_from_s3(input_path, reference_file_path)
+    df_trips_filtered = filter_data_by_date(df_trips, partition_year, partition_month, pickup, dropoff)
     df_trips_filtered = calculate_trip_duration(df_trips_filtered, pickup, dropoff)
     df_with_borough = join_trips_with_borough(df_trips_filtered, df_boroughs)
 
@@ -215,10 +227,9 @@ def run_etl(
         dynamodb_validation_table, s3_validation_output_path
     )
 
-    logger.info(f"Test: {df_with_borough.count()}")
-
     df_trips_aggregated = aggregate_trips_by_borough(df_with_borough)
     load_data_to_s3(df_trips_aggregated, output_path)
+    trigger_crawler(crawler_name)
 
 
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'bucket_name', 'object_key', 'reference_file_path', 'object_file'])
@@ -241,12 +252,14 @@ output_path = f"s3://{bucket_name}/stage/{file_type}/year={partition_year}/month
 s3_validation_output_prefix = f"deequ-validation-results/year={partition_year}/month={partition_month}"
 s3_validation_output_path = f"s3://{bucket_name}/{s3_validation_output_prefix}/"
 dynamodb_validation_table = 'tlc-trip-data-etl-data-validation'
+crawler_name = 'tlc-trip-data-etl-transformation-step-crawler'
 
 
 run_etl(
     spark, input_path, output_path, reference_file_path, dynamodb_validation_table,
-    s3_validation_output_path, partition_year, partition_month, file_type
+    s3_validation_output_path, partition_year, partition_month, file_type, crawler_name
 )
 
-spark.sparkContext.stop()
+spark.sparkContext._gateway.shutdown_callback_server()
+spark.stop()
 job.commit()

@@ -79,7 +79,7 @@ git clone https://github.com/CamiloMWizeline/arcxp-interview.git
 
 ## Data Architecture
 
-![Data Architecture](images/Data-Architecture.png)
+![Data Architecture](images/Data-Architecture-v2.png)
 
 ## ETL Components
 
@@ -116,5 +116,3 @@ git clone https://github.com/CamiloMWizeline/arcxp-interview.git
 ### - Boroughs with highest revenue per trip and vehicle type
 
 ![Query4](images/query4.png)
-
-
